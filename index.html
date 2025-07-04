@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Order Thanks Converter</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    body { font-family:sans-serif; text-align:center; padding:20px; background:#f9f9f9; }
+    h2 { color:#333; }
+    button { background:#28a745; color:white; border:none; padding:10px 20px; border-radius:5px; font-size:16px; cursor:pointer; }
+    button:hover { background:#218838; }
+    #output { margin-top:20px; }
+    a.whatsapp-btn { display:inline-block; background:#25D366; color:white; padding:10px 20px; text-decoration:none; border-radius:5px; font-size:16px; }
+    a.whatsapp-btn:hover { background:#1ebe57; }
+  </style>
+</head>
+<body>
+  <h2>📝 Upload Order Screenshot</h2>
+  <input type="file" id="imageInput" accept="image/*" /><br><br>
+  <button id="processBtn">Process & Generate Msg</button>
+  <div id="output"></div>
+
+  <script>
+    $("#processBtn").click(async function(){
+      const file = document.getElementById('imageInput').files[0];
+      if (!file) { alert("Please upload an image first"); return; }
+
+      let formData = new FormData();
+      formData.append("apikey", "K83921575388957");
+      formData.append("language", "eng");
+      formData.append("isOverlayRequired", "false");
+      formData.append("file", file);
+
+      $("#output").html("⏳ Processing... Please wait.");
+
+      let response = await fetch("https://api.ocr.space/parse/image", {
+        method: "POST",
+        body: formData
+      });
+
+      let result = await response.json();
+      let text = result.ParsedResults[0].ParsedText;
+
+      // Extract Order ID with improved logic
+      let orderIdMatch = text.match(/Order\s*(ID|#)?\s*[:\-]?\s*(\d{5,})/i);
+      let orderId = orderIdMatch ? orderIdMatch[2] : "NotFound";
+
+      // Extract Name with improved logic
+      let nameMatch = text.match(/Name\s*[:\-]?\s*(.+)/i);
+      let name = nameMatch ? nameMatch[1].split('\n')[0].trim() : "Customer";
+
+      // Extract Mobile with proper 91 handling
+      let mobileMatch = text.match(/(\+91[-\s]?\d{10}|\d{10})/);
+      let mobileRaw = mobileMatch ? mobileMatch[1].replace(/\D/g,'') : "0000000000";
+
+      // Final mobile formatting
+      let mobile = "";
+      if (mobileRaw.startsWith("91") && mobileRaw.length == 12) {
+        mobile = mobileRaw;
+      } else if (mobileRaw.length == 10) {
+        mobile = "91" + mobileRaw;
+      } else {
+        mobile = mobileRaw;
+      }
+
+      // Final Msg with encodeURIComponent
+      let msg = `🌟 *GamesPlanet*\n🙏 Hello ${name} ji, thanks for your order #${orderId}.\n📦 Your order will be shipped *soon* between *8PM-10PM*.\n🔗 Tracking will update on website after dispatch.\n🖼️ On request, we can send *parcel pic & tracking number* here on WhatsApp.\n💚 *Team GamesPlanet*`;
+
+      let waLink = `https://wa.me/${mobile}?text=${encodeURIComponent(msg)}`;
+
+      $("#output").html(`
+        <p><strong>Order ID:</strong> ${orderId}<br>
+        <strong>Name:</strong> ${name}<br>
+        <strong>Mobile:</strong> ${mobile}</p>
+        <a href="${waLink}" target="_blank" class="whatsapp-btn">📲 Send WhatsApp Msg</a>
+      `);
+    });
+  </script>
+</body>
+</html>
